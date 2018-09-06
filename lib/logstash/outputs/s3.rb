@@ -125,6 +125,9 @@ class LogStash::Outputs::S3 < LogStash::Outputs::Base
   ## for example if you have single Instance.
   config :restore, :validate => :boolean, :default => true
 
+  # SSH newline for S3 data lake
+  config :newline, :validate => :boolean, :default => false
+
   # The S3 canned ACL to use when putting the file. Defaults to "private".
   config :canned_acl, :validate => ["private", "public-read", "public-read-write", "authenticated-read", "aws-exec-read", "bucket-owner-read", "bucket-owner-full-control", "log-delivery-write"],
          :default => "private"
@@ -235,7 +238,12 @@ class LogStash::Outputs::S3 < LogStash::Outputs::Base
       prefix_written_to << prefix_key
 
       begin
-        @file_repository.get_file(prefix_key) { |file| file.write(encoded) }
+	# SSH newline for S3 data lake
+	if @newline
+        	@file_repository.get_file(prefix_key) { |file| file.write(encoded + "\n") }
+	else
+        	@file_repository.get_file(prefix_key) { |file| file.write(encoded) }
+	end
         # The output should stop accepting new events coming in, since it cannot do anything with them anymore.
         # Log the error and rethrow it.
       rescue Errno::ENOSPC => e
